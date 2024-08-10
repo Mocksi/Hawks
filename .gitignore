@@ -1,0 +1,14 @@
+.bundle/
+vendor/
+*.log
+intercepted_data/
+.DS_Store
+__pycache__
+*.swp
+*.bak
+*.tmp
+*.rbw
+*.orig
+*.rej
+Thumbs.db
+pkg/
