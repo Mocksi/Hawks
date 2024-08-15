@@ -3,6 +3,7 @@ require 'puma'
 require 'puma/cli'
 require_relative 'request_interceptor'
 require_relative 'file_storage'
+require_relative 'captures_cli'
 
 class CLI < Thor
   desc "start", "Starts the Hawksi Interceptor server"
@@ -19,12 +20,8 @@ class CLI < Thor
     system("pkill -f puma")
   end
 
-  desc "requests list", "Lists recent intercepted requests"
-  def requests_list
-    Dir.glob('./intercepted_data/requests/*.json').each do |file|
-      puts File.read(file)
-    end
-  end
+  desc "captures", "Manage captures"
+  subcommand "captures", CapturesCLI
 
   desc "clear", "Clears stored request/response data"
   def clear

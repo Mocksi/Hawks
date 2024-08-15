@@ -12,3 +12,4 @@ __pycache__
 *.rej
 Thumbs.db
 pkg/
+.gem
