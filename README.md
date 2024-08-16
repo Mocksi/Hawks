@@ -67,6 +67,6 @@ Hawksi is released under the MIT license. See the [LICENSE](LICENSE) file for de
 
 ## TODO
 
-- [ ] Add upload command
+- [x] Add upload command
 - [ ] Add standard for code formatting
 - [ ] Store logs in log/hawksi.log

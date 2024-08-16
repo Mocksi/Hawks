@@ -32,6 +32,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'puma', '~> 5.0'
   spec.add_dependency 'thor', '~> 1.1'
   spec.add_dependency 'json', '~> 2.5'
+  spec.add_dependency 'httpx', '~> 1.3'
+
 
   spec.add_development_dependency 'bundler', '~> 2.2'
   spec.add_development_dependency 'rake', '~> 13.0'

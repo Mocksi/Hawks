@@ -4,6 +4,7 @@ require 'puma/cli'
 require_relative 'request_interceptor'
 require_relative 'file_storage'
 require_relative 'captures_cli'
+require_relative 'uploads_cli'
 
 class CLI < Thor
   desc "start", "Starts the Hawksi Interceptor server"
@@ -22,6 +23,9 @@ class CLI < Thor
 
   desc "captures", "Manage captures"
   subcommand "captures", CapturesCLI
+
+  desc "uploads", "Uploads captured requests and responses"
+  subcommand "uploads", UploadsCLI
 
   desc "clear", "Clears stored request/response data"
   def clear

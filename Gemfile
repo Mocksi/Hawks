@@ -6,6 +6,7 @@ gem 'rack'
 gem 'puma'
 gem 'thor'
 gem 'json' 
+gem 'httpx', '~> 1.3'
 
 group :development, :test do
   gem 'rspec', '~> 3.13'
