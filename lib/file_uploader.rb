@@ -2,7 +2,7 @@ require 'httpx'
 require 'logger'
 
 class FileUploader
-  UPLOAD_URL = "https://run.mocky.io/v3/86b7c197-1ac7-4d7b-a985-24255ae89722"
+  UPLOAD_URL = "https://crowllectordb.onrender.com/api/v1/upload" || ENV['MOCKSI_UPLOAD_URL']
 
   def initialize(logger, client_uuid)
     @logger = logger
@@ -44,7 +44,8 @@ class FileUploader
   end
 
   def post_file(client, tar_gz_file)
-    client.post(UPLOAD_URL,
+    filename = File.basename(tar_gz_file)
+    client.post("#{UPLOAD_URL}?filename=#{filename}",
                 headers: { "x-client-id" => @client_uuid },
                 body: File.read(tar_gz_file))
   rescue => e
@@ -53,10 +54,10 @@ class FileUploader
   end
 
   def log_upload_result(tar_gz_file, response)
-    if response
+    if response && response.status == 200
       @logger.info "Uploaded #{tar_gz_file}: #{response.status}"
     else
-      @logger.error "Failed to upload #{tar_gz_file}"
+      @logger.error "Failed to upload #{tar_gz_file}. Status: #{response&.status}, Body: #{response&.body}"
     end
   end
 end
