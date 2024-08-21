@@ -1,5 +1,6 @@
 require 'json'
 require 'fileutils'
+require 'securerandom'
 
 class FileStorage
   def self.base_dir
@@ -17,11 +18,12 @@ class FileStorage
   def self.store(type, data)
     dir = File.join(base_dir, type)
     FileUtils.mkdir_p(dir)
-    file_path = File.join(dir, "#{Time.now.to_i}.json")
-
-    puts("Storing data in: #{file_path}")
 
     Thread.new do
+      filename = "#{SecureRandom.uuid}.json"
+      file_path = File.join(dir, filename)
+
+      puts("Storing data in: #{file_path}")
       File.open(file_path, 'w') do |file|
         file.write(data.to_json)
       end
