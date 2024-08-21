@@ -1,6 +1,6 @@
-# lib/request_interceptor.rb
 require 'json'
 require 'logger'
+require 'digest'
 require_relative '../lib/file_storage'
 
 module Hawksi
@@ -13,20 +13,37 @@ module Hawksi
 
     def call(env)
       request = Rack::Request.new(env)
-      log_request(request)
+      request_hash = generate_request_hash(request)  # Generate a hash of the request
+      log_request(request, request_hash)
 
       status, headers, response = @app.call(env)
 
-      log_response(status, headers, response)
+      log_response(status, headers, response, request_hash)
       [status, headers, response]
     end
 
     private
 
-    def log_request(request)
+    def generate_request_hash(request)
+      # Generate a hash based on request method, path, query string, and body
+      hash_input = [
+        request.request_method,
+        request.path,
+        request.query_string,
+        request.body&.read,  # Read the body content to include in the hash
+      ].join
 
+      # Reset the body input stream for future use
+      request.body.rewind
+
+      # Return a SHA256 hash of the concatenated string
+      Digest::SHA256.hexdigest(hash_input)
+    end
+
+    def log_request(request, request_hash)
       begin
         data = {
+          request_hash: request_hash,  # Include the request hash in the logged data
           method: request.request_method,
           path: request.path,
           query_string: request.query_string,
@@ -65,8 +82,8 @@ module Hawksi
         @logger.error("Error logging request: #{e.message}")
       end
     end
-    
-    def log_response(status, headers, response)
+
+    def log_response(status, headers, response, request_hash)
       begin
         body = if response.respond_to?(:body)
                  response.body.join.to_s
@@ -74,6 +91,7 @@ module Hawksi
                  response.join.to_s
                end
         data = {
+          request_hash: request_hash,  # Include the request hash in the response log
           status: status,
           headers: headers,
           body: body,

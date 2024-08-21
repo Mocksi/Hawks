@@ -24,12 +24,12 @@ describe Hawksi::RequestInterceptor do
       end
       
       it 'logs the request' do
-        expect(request_interceptor).to receive(:log_request).with(kind_of(Rack::Request))
+        expect(request_interceptor).to receive(:log_request).with(kind_of(Rack::Request), kind_of(String))
         request_interceptor.call(last_request.env)
       end
 
       it 'logs the response' do
-        expect(request_interceptor).to receive(:log_response).with(200, kind_of(Hash), kind_of(Array))
+        expect(request_interceptor).to receive(:log_response).with(200, kind_of(Hash), kind_of(Array), kind_of(String))
         request_interceptor.call(last_request.env)
       end
 
@@ -57,7 +57,7 @@ describe Hawksi::RequestInterceptor do
 
     it 'logs the request data' do
       expect(storage).to receive(:store).with('requests', kind_of(Hash))
-      request_interceptor.send(:log_request, request)
+      request_interceptor.send(:log_request, request, kind_of(String))
     end
 
     context 'when logging fails' do
@@ -67,7 +67,7 @@ describe Hawksi::RequestInterceptor do
 
       it 'logs the error' do
         expect(logger).to receive(:error).with('Error logging request: Boom!')
-        request_interceptor.send(:log_request, request)
+        request_interceptor.send(:log_request, request, kind_of(String))
       end
     end
   end
@@ -83,7 +83,7 @@ describe Hawksi::RequestInterceptor do
 
     it 'logs the response data' do
       expect(storage).to receive(:store).with('responses', kind_of(Hash))
-      request_interceptor.send(:log_response, status, headers, response)
+      request_interceptor.send(:log_response, status, headers, response, kind_of(String))
     end
 
     context 'when logging fails' do
@@ -93,7 +93,7 @@ describe Hawksi::RequestInterceptor do
 
       it 'logs the error' do
         expect(logger).to receive(:error).with('Error logging response: Boom!')
-        request_interceptor.send(:log_response, status, headers, response)
+        request_interceptor.send(:log_response, status, headers, response, kind_of(String))
       end
     end
   end
