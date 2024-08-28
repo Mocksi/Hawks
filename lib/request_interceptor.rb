@@ -74,7 +74,8 @@ module Hawksi
           ip: request.ip,
           xhr: request.xhr?,
           content_type: request.content_type,
-          content_length: request.content_length
+          content_length: request.content_length,
+          capture_type: "request",
         }
         @logger.info("Request: #{data.to_json}")
         @storage.store('requests', data)
@@ -96,7 +97,8 @@ module Hawksi
           headers: headers,
           body: body,
           content_type: headers['Content-Type'],
-          content_length: headers['Content-Length']
+          content_length: headers['Content-Length'],
+          capture_type: "response"
         }
         @logger.info("Response: #{data.to_json}")
         @storage.store('responses', data)

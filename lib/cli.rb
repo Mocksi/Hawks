@@ -15,6 +15,8 @@ class CLI < Thor
     Puma::CLI.new(args).run
   end
 
+  map 'serve' => 'start'
+
   desc "stop", "Stops the HawksiInterceptor server"
   def stop
     puts "Stopping Hawksi Interceptor server..."
