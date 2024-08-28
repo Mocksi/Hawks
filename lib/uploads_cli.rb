@@ -9,9 +9,6 @@ require_relative 'file_handler'
 require 'logger'
 
 class UploadsCLI < Thor
-  desc "update", "Update uploaded requests and responses"
-  option :base_dir, type: :string, desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
-  
   def initialize(*args)
     super
     @logger = Logger.new(STDOUT)
@@ -22,6 +19,8 @@ class UploadsCLI < Thor
     @file_uploader = FileUploader.new(@logger, @client_uuid)
   end
 
+  desc "update", "Update uploaded requests and responses"
+  option :base_dir, type: :string, desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
   def update(*args)
     set_base_dir
     files = find_files
@@ -35,6 +34,13 @@ class UploadsCLI < Thor
     return unless valid_tar_gz_files?(tar_gz_files)
 
     upload_files(tar_gz_files)
+  end
+
+  desc "process", "Process uploaded requests and responses"
+  option :base_dir, type: :string, desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
+  def process(*args)
+    set_base_dir
+    process_files
   end
 
   private
@@ -64,5 +70,9 @@ class UploadsCLI < Thor
 
   def upload_files(tar_gz_files)
     @file_uploader.upload_files(tar_gz_files)
+  end
+
+  def process_files
+    @file_uploader.process_files
   end
 end

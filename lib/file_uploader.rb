@@ -2,7 +2,9 @@ require 'httpx'
 require 'logger'
 
 class FileUploader
-  UPLOAD_URL = "https://crowllectordb.onrender.com/api/v1/upload" || ENV['MOCKSI_UPLOAD_URL']
+  # FIXME: use a base URL for the upload and process URLs
+  UPLOAD_URL =  ENV['MOCKSI_UPLOAD_URL'] || "https://crowllectordb.onrender.com/api/v1/upload"
+  PROCESS_URL = ENV['MOCKSI_PROCESS_URL'] || "https://crowllectordb.onrender.com/api/v1/process"
 
   def initialize(logger, client_uuid)
     @logger = logger
@@ -13,6 +15,17 @@ class FileUploader
     log_upload_start(tar_gz_files)
     threads = create_upload_threads(tar_gz_files)
     wait_for_threads(threads)
+  end
+
+  def process_files
+    HTTPX.wrap do |client|
+      response = client.post(PROCESS_URL, headers: { "x-client-id" => @client_uuid })
+      if response.is_a?(HTTPX::Response)
+        @logger.info "Processing uploaded files. Status: #{response.status}"
+      else
+        @logger.error "Failed to process files. Error: #{response.error}"
+      end
+    end
   end
 
   private
@@ -54,7 +67,7 @@ class FileUploader
   end
 
   def log_upload_result(tar_gz_file, response)
-    if response && response.status == 200
+    if response && response.is_a?(HTTPX::Response) && response.status == 200
       @logger.info "Uploaded #{tar_gz_file}: #{response.status}"
     else
       @logger.error "Failed to upload #{tar_gz_file}. Status: #{response&.status}, Body: #{response&.body}"
