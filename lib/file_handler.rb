@@ -32,8 +32,8 @@ class FileHandler
       tar_gz_file = "#{tar_file}.gz"
 
       unless File.exist?(tar_gz_file)
-        # Create tarball
-        system("tar -cf #{tar_file} #{file}")
+        # Create tarball containing only the file without directory structure
+        system("tar -C #{File.dirname(file)} -cf #{tar_file} #{File.basename(file)}")
 
         # Compress tarball
         system("gzip #{tar_file}")
