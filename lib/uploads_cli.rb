@@ -6,6 +6,7 @@ require 'open3'
 require_relative 'file_storage'
 require_relative 'file_uploader'
 require_relative 'file_handler'
+require_relative 'command_executor'
 require 'logger'
 
 class UploadsCLI < Thor
@@ -17,6 +18,7 @@ class UploadsCLI < Thor
     @file_handler = FileHandler.new(@base_dir, @logger)
     @client_uuid = get_client_uuid
     @file_uploader = FileUploader.new(@logger, @client_uuid)
+    @command_executor = CommandExecutor.new(@logger, @client_uuid)
   end
 
   desc "update", "Update uploaded requests and responses"
@@ -41,6 +43,13 @@ class UploadsCLI < Thor
   def process(*args)
     set_base_dir
     process_files
+  end
+
+  desc "execute COMMAND PARAMS", "Execute a command with the given parameters"
+  option :base_dir, type: :string, desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
+  def execute(command, *params)
+    set_base_dir
+    @command_executor.execute_command(command, params)
   end
 
   private
