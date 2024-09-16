@@ -4,12 +4,11 @@ require 'logger'
 
 class CommandExecutor
   attr_reader :logger, :client_uuid, :endpoint_url
-  REACTOR_URL = ENV['MOCKSI_REACTOR_URL'] || "https://crowllectordb.onrender.com/api/v1/reactor"
 
   def initialize(logger, client_uuid)
     @logger = logger
     @client_uuid = client_uuid
-    @endpoint_url = REACTOR_URL
+    @endpoint_url = Hawsksi.configuration.reactor_url
   end
 
   def execute_command(command, params)

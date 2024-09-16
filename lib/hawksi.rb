@@ -1,5 +1,7 @@
+require 'hawksi/configuration'
 require 'cli'
 require 'request_interceptor'
+
 
 BANNER = """                      _        _ 
   /\\  /\\__ ___      _| | _____(_)

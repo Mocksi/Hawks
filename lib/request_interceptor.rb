@@ -1,7 +1,8 @@
 require 'json'
 require 'logger'
 require 'digest'
-require_relative '../lib/file_storage'
+require_relative './file_storage'
+require_relative './mocksi_handler'
 
 module Hawksi
   class RequestInterceptor
@@ -13,6 +14,9 @@ module Hawksi
 
     def call(env)
       request = Rack::Request.new(env)
+      if request.path.start_with?('/mocksi')
+        return MocksiHandler.handle(request)
+      end
       request_hash = generate_request_hash(request)  # Generate a hash of the request
       log_request(request, request_hash)
 
