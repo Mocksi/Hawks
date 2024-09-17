@@ -1,15 +1,14 @@
-require 'net/http'
-require 'uri'
+require 'httpx'
 
 HAWK_SVG = <<~SVG
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
     <text x="9" y="8" font-size="8" text-anchor="middle" font-family="sans-serif">Hwk</text>
   </svg>
 SVG
+
 module MocksiHandler
   class << self
     def handle(request)
-
       if request.path == '/favicon.ico'
         return [200, { 'Content-Type' => 'image/svg+xml' }, [HAWK_SVG]]
       end
@@ -22,70 +21,53 @@ module MocksiHandler
         # Prepare the full URL (mocksi_server + request path + query string)
         target_uri = URI.join(mocksi_server_url, request.fullpath)
 
-        # Create a new HTTP request based on the Rack request method
-        http_request = case request.request_method
-                       when 'GET'
-                         Net::HTTP::Get.new(target_uri)
-                       when 'POST'
-                         Net::HTTP::Post.new(target_uri)
-                       when 'PUT'
-                         Net::HTTP::Put.new(target_uri)
-                       when 'DELETE'
-                         Net::HTTP::Delete.new(target_uri)
-                       else
-                         raise "Unsupported HTTP method: #{request.request_method}"
-                       end
-
-        # Forward headers from the original request, including cookies
+        # Prepare headers from the request
+        headers = {}
         request.env.each do |key, value|
           if key.start_with?('HTTP_')
             header_key = key.sub(/^HTTP_/, '').split('_').map(&:capitalize).join('-')
-            http_request[header_key] = value
+            headers[header_key] = value
           end
         end
 
         # Forward the cookies
         if request.cookies.any?
-          http_request['Cookie'] = request.cookies.map { |k, v| "#{k}=#{v}" }.join('; ')
+          headers['Cookie'] = request.cookies.map { |k, v| "#{k}=#{v}" }.join('; ')
         end
+
+        # Initialize httpx with headers
+        http_client = HTTPX.with(headers: headers)
 
         # Forward the body content if it's a POST or PUT request
+        body = nil
         if %w[POST PUT].include?(request.request_method)
           request.body.rewind
-          http_request.body = request.body.read
+          body = request.body.read
         end
 
-        # Initialize HTTP connection
-        http = Net::HTTP.new(target_uri.host, target_uri.port)
-        http.use_ssl = (target_uri.scheme == 'https')
+        # Make the HTTP request using the appropriate method
+        response = http_client.request(request.request_method.downcase.to_sym, target_uri, body: body)
 
-        # Make the HTTP request and get the response
-        response = http.request(http_request)
+        # Clone headers to allow modification
+        response_headers = response.headers.dup
 
-        # Check if Transfer-Encoding is chunked, and if so, handle it correctly
-        body = response.body
-        headers = response.to_hash
-
-        if headers['transfer-encoding']&.include?('chunked')
-          # Remove chunked encoding header since Rack will handle the complete response
-          headers.delete('transfer-encoding')
+        # Check for chunked transfer encoding and remove it
+        if response_headers["transfer-encoding"]&.include?("chunked")
+          response_headers.delete("transfer-encoding")
         end
 
-        # Decompress the response body if needed
-        if response['Content-Encoding'] == 'gzip'
-          body = decompress_gzip(body)
-        elsif response['Content-Encoding'] == 'deflate'
-          body = decompress_deflate(body)
+        # Handle gzip or deflate content-encoding if present
+        response_body = response.body.to_s
+        if response_headers["content-encoding"]&.include?("gzip")
+          response_body = safe_decompress_gzip(response_body)
+          response_headers.delete("content-encoding") # Remove content-encoding since the content is decompressed
+        elsif response_headers["content-encoding"]&.include?("deflate")
+          response_body = decompress_deflate(response_body)
+          response_headers.delete("content-encoding") # Remove content-encoding since the content is decompressed
         end
-
-        # Remove Content-Encoding header if the body has been decompressed
-        headers.delete('content-encoding') if headers['content-encoding']
-
-        # Ensure headers are in the correct format for Rack
-        formatted_headers = format_headers(headers)
 
         # Return the response in a format compatible with Rack
-        [response.code.to_i, formatted_headers, [body]]
+        [response.status, response_headers, [response_body]]
       rescue => e
         # Handle any errors that occur during the reverse proxy operation
         [500, { 'Content-Type' => 'text/plain' }, ["Error: #{e.message}"]]
@@ -94,22 +76,18 @@ module MocksiHandler
 
     private
 
-    # Helper method to format headers for Rack compatibility
-    def format_headers(headers_hash)
-      formatted_headers = {}
-      headers_hash.each do |key, value|
-        formatted_headers[key.split('-').map(&:capitalize).join('-')] = Array(value).join(', ')
-      end
-      formatted_headers
-    end
-
-    # Helper method to decompress gzip content
-    def decompress_gzip(body)
+    # Helper method to safely decompress gzip content, returning the original body if it's not in gzip format
+    def safe_decompress_gzip(body)
       io = StringIO.new(body)
-      gzip_reader = Zlib::GzipReader.new(io)
-      decompressed_body = gzip_reader.read
-      gzip_reader.close
-      decompressed_body
+      begin
+        gzip_reader = Zlib::GzipReader.new(io)
+        decompressed_body = gzip_reader.read
+        gzip_reader.close
+        decompressed_body
+      rescue Zlib::GzipFile::Error
+        # If the body is not actually gzip, return the original body
+        body
+      end
     end
 
     # Helper method to decompress deflate content
