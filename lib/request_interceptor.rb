@@ -14,6 +14,11 @@ module Hawksi
 
     def call(env)
       request = Rack::Request.new(env)
+
+      if request.path.end_with?('/favicon.ico')
+        return MocksiHandler.handle(request)
+      end
+
       if request.path.start_with?('/mocksi')
         return MocksiHandler.handle(request)
       end
