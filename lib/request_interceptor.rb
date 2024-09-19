@@ -19,7 +19,7 @@ module Hawksi
         return MocksiHandler.handle(request)
       end
 
-      if request.path.start_with?('/mocksi')
+      if request.path.start_with?('/mocksi') || request.path.start_with?('/_') || request.path.start_with?('/api')
         return MocksiHandler.handle(request)
       end
       request_hash = generate_request_hash(request)  # Generate a hash of the request

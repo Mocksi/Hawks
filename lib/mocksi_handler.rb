@@ -28,6 +28,13 @@ module MocksiHandler
             header_key = key.sub(/^HTTP_/, '').split('_').map(&:capitalize).join('-')
             headers[header_key] = value
           end
+          ## Yay for Rack's weirdness. See https://github.com/rack/rack/issues/1311
+          if key == 'CONTENT_TYPE'
+            headers['Content-Type'] = value
+          end
+          if key == 'CONTENT_LENGTH'
+            headers['Content-Length'] = value
+          end
         end
 
         # Forward the cookies
