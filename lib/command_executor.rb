@@ -8,7 +8,7 @@ class CommandExecutor
   def initialize(logger, client_uuid)
     @logger = logger
     @client_uuid = client_uuid
-    @endpoint_url = Hawsksi.configuration.reactor_url
+    @endpoint_url = Hawksi.configuration.reactor_url
   end
 
   def execute_command(command, params)
