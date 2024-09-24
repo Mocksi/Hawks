@@ -4,7 +4,7 @@ source 'https://rubygems.org'
 
 gem 'json' 
 gem 'httpx', '~> 1.3'
-gem 'puma'
+gem "puma", ">= 6.4.3"
 gem 'rack'
 gem 'thor'
 
