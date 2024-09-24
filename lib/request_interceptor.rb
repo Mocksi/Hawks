@@ -1,7 +1,8 @@
 require 'json'
 require 'logger'
 require 'digest'
-require_relative '../lib/file_storage'
+require_relative './file_storage'
+require_relative './mocksi_handler'
 
 module Hawksi
   class RequestInterceptor
@@ -13,6 +14,14 @@ module Hawksi
 
     def call(env)
       request = Rack::Request.new(env)
+
+      if request.path.end_with?('/favicon.ico')
+        return MocksiHandler.handle(request)
+      end
+
+      if request.path.start_with?('/mocksi') || request.path.start_with?('/_') || request.path.start_with?('/api')
+        return MocksiHandler.handle(request)
+      end
       request_hash = generate_request_hash(request)  # Generate a hash of the request
       log_request(request, request_hash)
 
@@ -34,7 +43,7 @@ module Hawksi
       ].join
 
       # Reset the body input stream for future use
-      request.body.rewind
+      request.body&.rewind
 
       # Return a SHA256 hash of the concatenated string
       Digest::SHA256.hexdigest(hash_input)

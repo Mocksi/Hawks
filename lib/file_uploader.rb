@@ -3,9 +3,6 @@ require 'logger'
 
 class FileUploader
   # FIXME: use a base URL for the upload and process URLs
-  UPLOAD_URL =  ENV['MOCKSI_UPLOAD_URL'] || "https://crowllectordb.onrender.com/api/v1/upload"
-  PROCESS_URL = ENV['MOCKSI_PROCESS_URL'] || "https://crowllectordb.onrender.com/api/v1/process"
-
   def initialize(logger, client_uuid)
     @logger = logger
     @client_uuid = client_uuid
@@ -19,10 +16,15 @@ class FileUploader
 
   def process_files
     HTTPX.wrap do |client|
-      response = client.post(PROCESS_URL, headers: { "x-client-id" => @client_uuid })
+      response = begin
+        client.post(Hawksi.configuration.process_url, headers: { "x-client-id" => @client_uuid })
+      rescue => e
+        @logger.error "Failed to process files. Error: #{e.message}"
+      end
+
       if response.is_a?(HTTPX::Response)
         @logger.info "Processing uploaded files. Status: #{response.status}"
-      else
+      elsif response.is_a?(HTTPX::ErrorResponse)
         @logger.error "Failed to process files. Error: #{response.error}"
       end
     end
@@ -58,7 +60,7 @@ class FileUploader
 
   def post_file(client, tar_gz_file)
     filename = File.basename(tar_gz_file)
-    client.post("#{UPLOAD_URL}?filename=#{filename}",
+    client.post("#{Hawksi.configuration.upload_url}?filename=#{filename}",
                 headers: { "x-client-id" => @client_uuid },
                 body: File.read(tar_gz_file))
   rescue => e
