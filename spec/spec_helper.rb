@@ -1,8 +1,9 @@
+# frozen_string_literal: true
 
 require 'rspec'
 
 # Requires supporting files with custom matchers and config.
-Dir[File.join(File.dirname(__FILE__), "support", "**", "*.rb")].each { |f| require f }
+Dir[File.join(File.dirname(__FILE__), 'support', '**', '*.rb')].each { |f| require f }
 
 RSpec.configure do |config|
   # Add settings here, for example:

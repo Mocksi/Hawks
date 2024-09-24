@@ -1,10 +1,14 @@
+# frozen_string_literal: true
+
 require 'thor'
 require_relative 'file_storage'
 
+# CLI for listing captured requests and responses
 class CapturesCLI < Thor
-  desc "list", "Lists recent captured requests and responses"
-  option :base_dir, type: :string, desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
-  def list(*args)
+  desc 'list', 'Lists recent captured requests and responses'
+  option :base_dir, type: :string,
+                    desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
+  def list(*_args) # rubocop:disable Metrics/MethodLength
     base_dir = FileStorage.base_dir
     FileStorage.base_dir = options[:base_dir] if options[:base_dir]
 
@@ -14,7 +18,7 @@ class CapturesCLI < Thor
     files = Dir.glob(glob_pattern)
 
     if files.empty?
-      puts "No captured requests or responses found."
+      puts 'No captured requests or responses found.'
       return
     end
 

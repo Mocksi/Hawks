@@ -1,6 +1,9 @@
+# frozen_string_literal: true
+
 require 'httpx'
 require 'logger'
 
+# Initializes a new instance of FileUploader.
 class FileUploader
   # FIXME: use a base URL for the upload and process URLs
   def initialize(logger, client_uuid)
@@ -14,11 +17,11 @@ class FileUploader
     wait_for_threads(threads)
   end
 
-  def process_files
+  def process_files # rubocop:disable Metrics/MethodLength
     HTTPX.wrap do |client|
       response = begin
-        client.post(Hawksi.configuration.process_url, headers: { "x-client-id" => @client_uuid })
-      rescue => e
+        client.post(Hawksi.configuration.process_url, headers: { 'x-client-id' => @client_uuid })
+      rescue StandardError => e
         @logger.error "Failed to process files. Error: #{e.message}"
       end
 
@@ -61,15 +64,15 @@ class FileUploader
   def post_file(client, tar_gz_file)
     filename = File.basename(tar_gz_file)
     client.post("#{Hawksi.configuration.upload_url}?filename=#{filename}",
-                headers: { "x-client-id" => @client_uuid },
+                headers: { 'x-client-id' => @client_uuid },
                 body: File.read(tar_gz_file))
-  rescue => e
+  rescue StandardError => e
     @logger.error "Failed to upload #{tar_gz_file}: #{e.message}"
     nil
   end
 
   def log_upload_result(tar_gz_file, response)
-    if response && response.is_a?(HTTPX::Response) && response.status == 200
+    if response.is_a?(HTTPX::Response) && response.status == 200
       @logger.info "Uploaded #{tar_gz_file}: #{response.status}"
     else
       @logger.error "Failed to upload #{tar_gz_file}. Status: #{response&.status}, Body: #{response&.body}"

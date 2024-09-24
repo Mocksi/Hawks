@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'thor'
 require 'securerandom'
 require 'httpx'
@@ -9,26 +11,32 @@ require_relative 'file_handler'
 require_relative 'command_executor'
 require 'logger'
 
+# Initializes a new instance of UploadsCLI with the given options.
+#
+# Sets up a logger for writing to stdout, sets the base directory for file
+# operations, creates a new FileHandler instance, a new FileUploader instance,
+# and a new CommandExecutor instance.
 class UploadsCLI < Thor
   def initialize(*args)
     super
-    @logger = Logger.new(STDOUT)
+    @logger = Logger.new($stdout)
     @logger.level = Logger::INFO
     @base_dir = options[:base_dir] || FileStorage.base_dir
     @file_handler = FileHandler.new(@base_dir, @logger)
-    @client_uuid = get_client_uuid
+    @client_uuid = current_client_uuid
     @file_uploader = FileUploader.new(@logger, @client_uuid)
     @command_executor = CommandExecutor.new(@logger, @client_uuid)
   end
 
-  desc "update", "Update uploaded requests and responses"
-  option :base_dir, type: :string, desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
-  def update(*args)
+  desc 'update', 'Update uploaded requests and responses'
+  option :base_dir, type: :string,
+                    desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
+  def update(*_args)
     set_base_dir
     files = find_files
 
     if files.empty?
-      @logger.info "No captured requests or responses found."
+      @logger.info 'No captured requests or responses found.'
       return
     end
 
@@ -38,15 +46,17 @@ class UploadsCLI < Thor
     upload_files(tar_gz_files)
   end
 
-  desc "process", "Process uploaded requests and responses"
-  option :base_dir, type: :string, desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
-  def process(*args)
+  desc 'process', 'Process uploaded requests and responses'
+  option :base_dir, type: :string,
+                    desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
+  def process(*_args)
     set_base_dir
     process_files
   end
 
-  desc "execute COMMAND PARAMS", "Execute a command with the given parameters"
-  option :base_dir, type: :string, desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
+  desc 'execute COMMAND PARAMS', 'Execute a command with the given parameters'
+  option :base_dir, type: :string,
+                    desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
   def execute(command, *params)
     set_base_dir
     @command_executor.execute_command(command, params)
@@ -58,7 +68,7 @@ class UploadsCLI < Thor
     FileStorage.base_dir = @base_dir
   end
 
-  def get_client_uuid
+  def current_client_uuid
     @file_handler.generate_client_uuid
   end
 

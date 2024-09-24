@@ -1,0 +1,15 @@
+require:
+  - rubocop-rake
+  - rubocop-rspec
+
+AllCops:
+  NewCops: enable
+
+Layout/HeredocIndentation:
+  Exclude:
+    - 'lib/hawksi.rb'
+
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
+    - '*.gemspec'

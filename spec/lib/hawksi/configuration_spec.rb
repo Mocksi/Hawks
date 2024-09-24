@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 
 require 'spec_helper'
 require 'hawksi/configuration'
@@ -5,7 +6,7 @@ require 'hawksi/configuration'
 RSpec.describe Hawksi::Configuration do
   describe '.configuration' do
     it 'returns a Configuration instance' do
-      expect(Hawksi.configuration).to be_an_instance_of(Hawksi::Configuration)
+      expect(Hawksi.configuration).to be_an_instance_of(described_class)
     end
 
     it 'memoizes the configuration instance' do
@@ -22,9 +23,9 @@ RSpec.describe Hawksi::Configuration do
   end
 
   describe '#initialize' do
-    let(:config) { Hawksi::Configuration.new }
+    let(:config) { described_class.new }
 
-    it 'sets default values for URLs' do
+    it 'sets default values for URLs' do # rubocop:disable RSpec/MultipleExpectations
       expect(config.instance_variable_get(:@mocksi_server)).to eq('https://app.mocksi.ai')
       expect(config.instance_variable_get(:@reactor_url)).to eq('https://api.mocksi.ai/api/v1/reactor')
       expect(config.instance_variable_get(:@upload_url)).to eq('https://api.mocksi.ai/api/v1/upload')
@@ -46,14 +47,15 @@ RSpec.describe Hawksi::Configuration do
         ENV.delete('MOCKSI_PROCESS_URL')
       end
 
-      it 'uses environment variables for URLs' do
-        config = Hawksi::Configuration.new
+      it 'uses environment variables for URLs' do # rubocop:disable RSpec/MultipleExpectations
+        config = described_class.new
         expect(config.instance_variable_get(:@mocksi_server)).to eq('https://custom.mocksi.ai')
         expect(config.instance_variable_get(:@reactor_url)).to eq('https://custom.mocksi.ai/reactor')
         expect(config.instance_variable_get(:@upload_url)).to eq('https://custom.mocksi.ai/upload')
         expect(config.instance_variable_get(:@process_url)).to eq('https://custom.mocksi.ai/process')
       end
     end
+
     context 'when a value is set to an empty string' do
       before do
         ENV['MOCKSI_SERVER'] = ''
@@ -69,8 +71,8 @@ RSpec.describe Hawksi::Configuration do
         ENV.delete('MOCKSI_PROCESS_URL')
       end
 
-      it 'uses default values for empty string environment variables' do
-        config = Hawksi::Configuration.new
+      it 'uses default values for empty string environment variables' do # rubocop:disable RSpec/MultipleExpectations
+        config = described_class.new
         expect(config.instance_variable_get(:@mocksi_server)).to eq('https://app.mocksi.ai')
         expect(config.instance_variable_get(:@reactor_url)).to eq('https://api.mocksi.ai/api/v1/reactor')
         expect(config.instance_variable_get(:@upload_url)).to eq('https://api.mocksi.ai/api/v1/upload')
