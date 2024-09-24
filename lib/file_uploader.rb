@@ -16,10 +16,15 @@ class FileUploader
 
   def process_files
     HTTPX.wrap do |client|
-      response = client.post(Hawksi.configuration.process_url, headers: { "x-client-id" => @client_uuid })
+      response = begin
+        client.post(Hawksi.configuration.process_url, headers: { "x-client-id" => @client_uuid })
+      rescue => e
+        @logger.error "Failed to process files. Error: #{e.message}"
+      end
+
       if response.is_a?(HTTPX::Response)
         @logger.info "Processing uploaded files. Status: #{response.status}"
-      else
+      elsif response.is_a?(HTTPX::ErrorResponse)
         @logger.error "Failed to process files. Error: #{response.error}"
       end
     end

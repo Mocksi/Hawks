@@ -2,12 +2,11 @@
 
 source 'https://rubygems.org'
 
-gem 'rack'
-gem 'puma'
-gem 'thor'
 gem 'json' 
 gem 'httpx', '~> 1.3'
-gem 'curses'
+gem 'puma'
+gem 'rack'
+gem 'thor'
 
 group :development, :test do
   gem 'rspec', '~> 3.13'
