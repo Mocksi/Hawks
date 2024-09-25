@@ -11,7 +11,7 @@ describe Hawksi::RequestInterceptor do # rubocop:disable RSpec/SpecFilePathForma
   let(:app) { ->(_env) { [200, { 'Content-Type' => 'text/plain' }, ['Hello']] } }
   let(:logger) { double('Logger') } # rubocop:disable RSpec/VerifiedDoubles
   let(:storage) { double('FileStorage') } # rubocop:disable RSpec/VerifiedDoubles
-  let(:request_interceptor) { described_class.new(app, logger:, storage:) }
+  let(:request_interceptor) { described_class.new(app, logger: logger, storage: storage) }
 
   before do
     allow(logger).to receive(:info)

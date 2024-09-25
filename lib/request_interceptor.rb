@@ -57,7 +57,7 @@ module Hawksi
 
     def log_request(request, request_hash) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
       data = {
-        request_hash:, # Include the request hash in the logged data
+        request_hash: request_hash, # Include the request hash in the logged data
         method: request.request_method,
         path: request.path,
         query_string: request.query_string,
@@ -104,10 +104,10 @@ module Hawksi
                response.join.to_s
              end
       data = {
-        request_hash:, # Include the request hash in the response log
-        status:,
-        headers:,
-        body:,
+        request_hash: request_hash, # Include the request hash in the response log
+        status: status,
+        headers: headers,
+        body: body,
         content_type: headers['Content-Type'],
         content_length: headers['Content-Length'],
         capture_type: 'response'

@@ -34,7 +34,7 @@ class CommandExecutor
   def build_request_body(command, params)
     {
       client_id: client_uuid,
-      command:,
+      command: command,
       instructions: params.join(' ')
     }.to_json
   end

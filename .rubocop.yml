@@ -5,6 +5,12 @@ require:
 AllCops:
   NewCops: enable
 
+  Exclude:
+    - 'lib/hawksi.rb'
+
+Style/HashSyntax:
+  Enabled: false
+
 Layout/HeredocIndentation:
   Exclude:
     - 'lib/hawksi.rb'

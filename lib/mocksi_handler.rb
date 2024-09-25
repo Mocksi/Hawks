@@ -14,9 +14,11 @@ module MocksiHandler
     def fetch_mocksi_server_url
       mocksi_server_url = Hawksi.configuration.mocksi_server
       raise 'Mocksi server URL not configured' if mocksi_server_url.nil? || mocksi_server_url.empty?
+
+      mocksi_server_url
     end
 
-    def prep_headers((request))
+    def prep_headers(request)
       headers = {}
       request.env.each do |key, value|
         if key.start_with?('HTTP_')
@@ -57,7 +59,7 @@ module MocksiHandler
         headers['Cookie'] = request.cookies.map { |k, v| "#{k}=#{v}" }.join('; ') if request.cookies.any?
 
         # Initialize httpx with headers
-        http_client = HTTPX.with(headers:)
+        http_client = HTTPX.with(headers: headers)
 
         # Forward the body content if it's a POST or PUT request
         body = nil
@@ -66,7 +68,9 @@ module MocksiHandler
           body = request.body.read
         end
 
-        response = http_client.request(request.request_method.downcase.to_sym, target_uri, body:)
+        response = http_client.request(request.request_method.downcase.to_sym, target_uri, body: body)
+        response_body = build_response_body(response)
+        response_headers = response.headers.to_h
 
         # Return the response in a format compatible with Rack
         [response.status, response_headers, [response_body]]

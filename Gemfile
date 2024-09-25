@@ -12,7 +12,7 @@ group :development, :test do
   gem 'bundler'
   gem 'rake'
   gem 'rspec', '~> 3.13'
-  gem 'rubocop'
+  gem 'rubocop', '1.66.1'
   gem 'rubocop-rake'
   gem 'rubocop-rspec'
   gem 'ruby-lsp'
