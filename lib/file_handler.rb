@@ -1,6 +1,9 @@
+# frozen_string_literal: true
+
 require 'fileutils'
 require 'securerandom'
 
+# Handles file operations.
 class FileHandler
   def initialize(base_dir, logger)
     @base_dir = base_dir
@@ -25,7 +28,7 @@ class FileHandler
     client_uuid
   end
 
-  def create_tar_gz_files(files)
+  def create_tar_gz_files(files) # rubocop:disable Metrics/MethodLength
     tar_gz_files = []
     files.each do |file|
       tar_file = "#{file}.tar"
@@ -38,7 +41,6 @@ class FileHandler
         # Compress tarball
         system("gzip #{tar_file}")
       end
-
 
       tar_gz_files << tar_gz_file
     end

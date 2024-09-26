@@ -1,7 +1,10 @@
+# frozen_string_literal: true
+
 require 'json'
 require 'fileutils'
 require 'securerandom'
 
+# Handles file storage..
 class FileStorage
   def self.base_dir
     @base_dir ||= ENV['HAWKSI_BASE_DIR'] || './tmp/intercepted_data'
@@ -24,9 +27,7 @@ class FileStorage
       file_path = File.join(dir, filename)
 
       puts("Storing data in: #{file_path}")
-      File.open(file_path, 'w') do |file|
-        file.write(data.to_json)
-      end
+      File.write(file_path, data.to_json)
       puts("Data stored in: #{file_path}")
     end
   end

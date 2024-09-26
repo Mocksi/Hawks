@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'httpx'
 
 HAWK_SVG = <<~SVG
@@ -6,41 +8,55 @@ HAWK_SVG = <<~SVG
   </svg>
 SVG
 
+# Handles calls to /mocksi
 module MocksiHandler
   class << self
-    def handle(request)
-      if request.path == '/favicon.ico'
-        return [200, { 'Content-Type' => 'image/svg+xml' }, [HAWK_SVG]]
+    def fetch_mocksi_server_url
+      mocksi_server_url = Hawksi.configuration.mocksi_server
+      raise 'Mocksi server URL not configured' if mocksi_server_url.nil? || mocksi_server_url.empty?
+
+      mocksi_server_url
+    end
+
+    def prep_headers(request)
+      headers = {}
+      request.env.each do |key, value|
+        if key.start_with?('HTTP_')
+          header_key = key.sub(/^HTTP_/, '').split('_').map(&:capitalize).join('-')
+          headers[header_key] = value
+        end
+        ## Yay for Rack's weirdness. See https://github.com/rack/rack/issues/1311
+        headers['Content-Type'] = value if key == 'CONTENT_TYPE'
+        headers['Content-Length'] = value if key == 'CONTENT_LENGTH'
       end
+      headers
+    end
+
+    def build_response_body(response) # rubocop:disable Metrics/MethodLength
+      response_headers = response.headers.dup
+      # Check for chunked transfer encoding and remove it
+      response_headers.delete('transfer-encoding') if response_headers['transfer-encoding']&.include?('chunked')
+
+      response_body = response.body.to_s
+      if response_headers['content-encoding']&.include?('gzip')
+        response_body = safe_decompress_gzip(response_body)
+        response_headers.delete('content-encoding') # Remove content-encoding since the content is decompressed
+      elsif response_headers['content-encoding']&.include?('deflate')
+        response_body = decompress_deflate(response_body)
+        response_headers.delete('content-encoding') # Remove content-encoding since the content is decompressed
+      end
+      response_body
+    end
+
+    def handle(request) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize
+      return [200, { 'Content-Type' => 'image/svg+xml' }, [HAWK_SVG]] if request.path == '/favicon.ico'
 
       begin
-        # Get the mocksi server URL from configuration
-        mocksi_server_url = Hawksi.configuration.mocksi_server
-        raise "Mocksi server URL not configured" if mocksi_server_url.nil? || mocksi_server_url.empty?
-
-        # Prepare the full URL (mocksi_server + request path + query string)
+        mocksi_server_url = fetch_mocksi_server_url
         target_uri = URI.join(mocksi_server_url, request.fullpath)
 
-        # Prepare headers from the request
-        headers = {}
-        request.env.each do |key, value|
-          if key.start_with?('HTTP_')
-            header_key = key.sub(/^HTTP_/, '').split('_').map(&:capitalize).join('-')
-            headers[header_key] = value
-          end
-          ## Yay for Rack's weirdness. See https://github.com/rack/rack/issues/1311
-          if key == 'CONTENT_TYPE'
-            headers['Content-Type'] = value
-          end
-          if key == 'CONTENT_LENGTH'
-            headers['Content-Length'] = value
-          end
-        end
-
-        # Forward the cookies
-        if request.cookies.any?
-          headers['Cookie'] = request.cookies.map { |k, v| "#{k}=#{v}" }.join('; ')
-        end
+        headers = prep_headers(request)
+        headers['Cookie'] = request.cookies.map { |k, v| "#{k}=#{v}" }.join('; ') if request.cookies.any?
 
         # Initialize httpx with headers
         http_client = HTTPX.with(headers: headers)
@@ -52,30 +68,13 @@ module MocksiHandler
           body = request.body.read
         end
 
-        # Make the HTTP request using the appropriate method
         response = http_client.request(request.request_method.downcase.to_sym, target_uri, body: body)
-
-        # Clone headers to allow modification
-        response_headers = response.headers.dup
-
-        # Check for chunked transfer encoding and remove it
-        if response_headers["transfer-encoding"]&.include?("chunked")
-          response_headers.delete("transfer-encoding")
-        end
-
-        # Handle gzip or deflate content-encoding if present
-        response_body = response.body.to_s
-        if response_headers["content-encoding"]&.include?("gzip")
-          response_body = safe_decompress_gzip(response_body)
-          response_headers.delete("content-encoding") # Remove content-encoding since the content is decompressed
-        elsif response_headers["content-encoding"]&.include?("deflate")
-          response_body = decompress_deflate(response_body)
-          response_headers.delete("content-encoding") # Remove content-encoding since the content is decompressed
-        end
+        response_body = build_response_body(response)
+        response_headers = response.headers.to_h
 
         # Return the response in a format compatible with Rack
         [response.status, response_headers, [response_body]]
-      rescue => e
+      rescue StandardError => e
         # Handle any errors that occur during the reverse proxy operation
         [500, { 'Content-Type' => 'text/plain' }, ["Error: #{e.message}"]]
       end
