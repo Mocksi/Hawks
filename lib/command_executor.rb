@@ -61,6 +61,7 @@ class CommandExecutor
       logger.error "Error during command execution: #{result['message']}"
     else
       logger.info "Command executed successfully. #{result}"
+      puts(result.fetch('response', ''))
     end
   end
 end

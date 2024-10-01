@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'socket'
 require 'json'
 require 'logger'
 require 'digest'
@@ -17,47 +18,114 @@ module Hawksi
       @app = app
       @logger = logger
       @storage = storage
+      @templates = {}
+      @templates_mutex = Mutex.new
+
+      @socket_path = '/tmp/hawksi.sock'
+      start_unix_socket_server
     end
 
     def call(env)
       request = Rack::Request.new(env)
+      request_key = generate_request_key(request) # Generate a key for the request
 
+      # Check if there's a template for this request
+      template = nil
+      @templates_mutex.synchronize do
+        template = @templates[request_key]
+      end
+      if template
+        status, headers, _temp = @app.call(env)
+
+        # Serve the template
+        headers['Etag'] = Digest::MD5.hexdigest(template)
+        return [status, headers, [template]]
+      end
+
+      # Original code
       return MocksiHandler.handle(request) if request.path.end_with?('/favicon.ico')
 
       if request.path.start_with?('/mocksi') || request.path.start_with?('/_') || request.path.start_with?('/api')
         return MocksiHandler.handle(request)
       end
 
-      request_hash = generate_request_hash(request) # Generate a hash of the request
-      log_request(request, request_hash)
+      log_request(request, request_key)
 
       status, headers, response = @app.call(env)
 
-      log_response(status, headers, response, request_hash)
+      log_response(status, headers, response, request_key)
       [status, headers, response]
     end
 
     private
 
-    def generate_request_hash(request)
-      # Generate a hash based on request method, path, query string, and body
-      hash_input = [
-        request.request_method,
-        request.path,
-        request.query_string,
-        request.body&.read # Read the body content to include in the hash
-      ].join
+    def start_unix_socket_server
+      # Remove the socket file if it already exists
+      File.unlink(@socket_path) if File.exist?(@socket_path)
 
-      # Reset the body input stream for future use
-      request.body&.rewind
+      at_exit do
+        File.unlink(@socket_path) if File.exist?(@socket_path)
+      end
 
-      # Return a SHA256 hash of the concatenated string
-      Digest::SHA256.hexdigest(hash_input)
+      @server_thread = Thread.new do
+        @server = UNIXServer.new(@socket_path)
+        @logger.info("Unix socket server started at #{@socket_path}")
+        puts "Unix socket server started at #{@socket_path}"
+        loop do
+          client = @server.accept
+          Thread.new(client) do |conn|
+            handle_client(conn)
+          end
+        end
+      rescue StandardError => e
+        @logger.error("Unix socket server error: #{e.message}")
+      ensure
+        @server.close if @server
+      end
     end
 
-    def log_request(request, request_hash) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+    def handle_client(conn)
+      while message = conn.gets
+        # Process the message
+        process_message(message.chomp)
+      end
+    rescue StandardError => e
+      @logger.error("Error handling client: #{e.message}")
+    ensure
+      conn.close
+    end
+
+    def process_message(message)
+      data = JSON.parse(message)
+      case data['action']
+      when 'set_template'
+        key = data['key']
+        template = data['template']
+        @templates_mutex.synchronize do
+          @templates[key] = template
+        end
+        @logger.info("Template set for key: #{key}")
+      when 'remove_template'
+        key = data['key']
+        @templates_mutex.synchronize do
+          @templates.delete(key)
+        end
+        @logger.info("Template removed for key: #{key}")
+      else
+        @logger.warn("Unknown action: #{data['action']}")
+      end
+    rescue JSON::ParserError => e
+      puts("JSON parsing error: #{e.message}")
+      @logger.error("JSON parsing error: #{e.message}")
+    end
+
+    def generate_request_key(request)
+      "#{request.request_method}_#{request.path}"
+    end
+
+    def log_request(request, request_key) # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
       data = {
-        request_hash: request_hash, # Include the request hash in the logged data
+        request_key: request_key, # Include the request key in the logged data
         method: request.request_method,
         path: request.path,
         query_string: request.query_string,
@@ -65,7 +133,6 @@ module Hawksi
         scheme: request.scheme,
         host: request.host,
         port: request.port,
-        # Log only specific parts of the env hash to avoid circular references
         env: {
           'REQUEST_METHOD' => request.env['REQUEST_METHOD'],
           'SCRIPT_NAME' => request.env['SCRIPT_NAME'],
@@ -95,16 +162,18 @@ module Hawksi
       @storage.store('requests', data)
     rescue StandardError => e
       @logger.error("Error logging request: #{e.message}")
+    ensure
+      request.body&.rewind
     end
 
-    def log_response(status, headers, response, request_hash) # rubocop:disable Metrics/MethodLength
+    def log_response(status, headers, response, request_key) # rubocop:disable Metrics/MethodLength
       body = if response.respond_to?(:body)
                response.body.join.to_s
              else
                response.join.to_s
              end
       data = {
-        request_hash: request_hash, # Include the request hash in the response log
+        request_key: request_key, # Include the request key in the response log
         status: status,
         headers: headers,
         body: body,

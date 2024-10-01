@@ -26,6 +26,7 @@ class UploadsCLI < Thor
     @client_uuid = current_client_uuid
     @file_uploader = FileUploader.new(@logger, @client_uuid)
     @command_executor = CommandExecutor.new(@logger, @client_uuid)
+    @socket_path = '/tmp/hawksi.sock'
   end
 
   desc 'update', 'Update uploaded requests and responses'
@@ -60,6 +61,44 @@ class UploadsCLI < Thor
   def execute(command, *params)
     set_base_dir
     @command_executor.execute_command(command, params)
+  end
+
+  desc 'set_template KEY FILENAME', 'Set a template for the given key using the content of the specified file'
+  option :base_dir, type: :string,
+                    desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
+  def set_template(key, filename)
+    set_base_dir
+    unless File.exist?(filename)
+      @logger.error "File not found: #{filename}"
+      return
+    end
+
+    # Read the template content from the file
+    template_content = File.read(filename)
+
+    message = {
+      action: 'set_template',
+      key: key,
+      template: template_content
+    }
+    # Send the message to the /tmp/hawksi.sock socket
+    socket = UNIXSocket.new(@socket_path)
+    socket.write(message.to_json)
+    socket.close
+  end
+
+  desc 'remove_template KEY', 'Remove the template for the given key'
+  option :base_dir, type: :string,
+                    desc: 'Base directory for storing intercepted data. Defaults to ./tmp/intercepted_data'
+  def remove_template(key)
+    set_base_dir
+    message = {
+      action: 'remove_template',
+      key: key
+    }
+    socket = UNIXSocket.new(@socket_path)
+    socket.write(message.to_json)
+    socket.close
   end
 
   private
